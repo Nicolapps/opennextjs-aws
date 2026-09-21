@@ -206,7 +206,11 @@ export function handleRewrites<T extends RewriteDefinition>(
 
     debug("urlParts", { pathname, protocol, hostname, queryString });
     const toDestinationPath = compile(escapeRegex(pathname, { isPath: true }));
-    const toDestinationHost = compile(escapeRegex(hostname));
+    // path-to-regexp would parse the port (e.g. `:3000`) as a parameter
+    const port = hostname.match(/:\d+$/)?.[0] ?? "";
+    const toDestinationHost = compile(
+      escapeRegex(hostname.slice(0, hostname.length - port.length)),
+    );
     const toDestinationQuery = compile(escapeRegex(queryString));
     const params = {
       // params for the source
@@ -228,7 +232,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     let rewrittenPath = pathname;
     if (isUsingParams) {
       rewrittenPath = unescapeRegex(toDestinationPath(params));
-      rewrittenHost = unescapeRegex(toDestinationHost(params));
+      rewrittenHost = unescapeRegex(toDestinationHost(params)) + port;
       rewrittenQuery = unescapeRegex(toDestinationQuery(params));
     }
 

@@ -499,6 +499,56 @@ describe("handleRewrites", () => {
     });
   });
 
+  it("should rewrite externally to a host with a port", () => {
+    const event = createEvent({
+      url: "https://on/ext/foo/bar?a=b",
+    });
+
+    const rewrites = [
+      {
+        source: "/ext/:path*",
+        destination: "http://127.0.0.1:3000/:path*",
+        regex: "^/ext(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        rawPath: "/foo/bar",
+        url: "http://127.0.0.1:3000/foo/bar?a=b",
+      },
+      __rewrite: rewrites[0],
+      isExternalRewrite: true,
+    });
+  });
+
+  it("should rewrite externally to a host with a param and a port", () => {
+    const event = createEvent({
+      url: "https://on/ext/eu/foo",
+    });
+
+    const rewrites = [
+      {
+        source: "/ext/:region/:path*",
+        destination: "https://:region.external.com:8443/:path*",
+        regex: "^/ext(?:/([^/]+?))(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        rawPath: "/foo",
+        url: "https://eu.external.com:8443/foo",
+      },
+      __rewrite: rewrites[0],
+      isExternalRewrite: true,
+    });
+  });
+
   // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
   it("should rewrite to the root with a query string", () => {
     const event = createEvent({
