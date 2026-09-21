@@ -4,6 +4,7 @@ import type {
   IncrementalCacheValue,
 } from "types/cache";
 import {
+  getStaleFetchLastModified,
   getStaleLastModified,
   getTagsFromValue,
   hasBeenRevalidated,
@@ -109,7 +110,7 @@ export default class Cache {
         : await isStale(key, _tags, _lastModified);
 
       return {
-        lastModified: _isStale ? 1 : _lastModified,
+        lastModified: _isStale ? getStaleFetchLastModified() : _lastModified,
         value: cachedEntry.value,
       } as CacheHandlerValue;
     } catch (e) {
