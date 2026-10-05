@@ -359,6 +359,45 @@ describe("handleRedirects", () => {
     expect(result).toBeUndefined();
   });
 
+  it("should redirect when a has query condition captures a param", () => {
+    const event = createEvent({
+      url: "https://on/redirect-has?go=there",
+    });
+
+    const result = handleRedirects(event, [
+      {
+        source: "/redirect-has",
+        destination: "/params/:target",
+        has: [{ type: "query", key: "go", value: "(?<target>.*)" }],
+        locale: false,
+        statusCode: 307,
+        regex: "^(?!/_next)/redirect-has(?:/)?$",
+      },
+    ]);
+
+    expect(result.statusCode).toEqual(307);
+    expect(result.headers.Location).toBe("https://on/params/there?go=there");
+  });
+
+  it("should not redirect when the key of a has query condition is absent", () => {
+    const event = createEvent({
+      url: "https://on/redirect-has",
+    });
+
+    const result = handleRedirects(event, [
+      {
+        source: "/redirect-has",
+        destination: "/params/:target",
+        has: [{ type: "query", key: "go", value: "(?<target>.*)" }],
+        locale: false,
+        statusCode: 307,
+        regex: "^(?!/_next)/redirect-has(?:/)?$",
+      },
+    ]);
+
+    expect(result).toBeUndefined();
+  });
+
   it("should redirect with + character and query string", () => {
     const event = createEvent({
       url: "https://on/foo",
@@ -615,6 +654,64 @@ describe("handleRewrites", () => {
         url: "https://on/rewrite/albums/foo",
       },
       __rewrite: rewrites[0],
+      isExternalRewrite: false,
+    });
+  });
+
+  it("should rewrite when the key of a missing query condition is absent", () => {
+    const event = createEvent({
+      url: "https://on/albums/foo",
+    });
+
+    const rewrites = [
+      {
+        source: "/albums/:album",
+        destination: "/rewrite/albums/:album",
+        regex: "^/albums(?:/([^/]+?))(?:/)?$",
+        missing: [
+          {
+            type: "query",
+            key: "missing",
+          },
+        ],
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        rawPath: "/rewrite/albums/foo",
+        url: "https://on/rewrite/albums/foo",
+      },
+      __rewrite: rewrites[0],
+      isExternalRewrite: false,
+    });
+  });
+
+  it("should not rewrite when the key of a missing query condition is present", () => {
+    const event = createEvent({
+      url: "https://on/albums/foo?missing=1",
+    });
+
+    const rewrites = [
+      {
+        source: "/albums/:album",
+        destination: "/rewrite/albums/:album",
+        regex: "^/albums(?:/([^/]+?))(?:/)?$",
+        missing: [
+          {
+            type: "query",
+            key: "missing",
+          },
+        ],
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: event,
+      __rewrite: undefined,
       isExternalRewrite: false,
     });
   });

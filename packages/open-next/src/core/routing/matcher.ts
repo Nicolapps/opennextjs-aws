@@ -46,7 +46,8 @@ const routeHasMatcher =
           new RegExp(redirect.value ?? "").test(cookies[redirect.key] ?? "")
         );
       case "query":
-        return query[redirect.key] && Array.isArray(redirect.value)
+        if (!query[redirect.key]) return false;
+        return Array.isArray(redirect.value)
           ? redirect.value.reduce(
               (prev, current) =>
                 prev || new RegExp(current).test(query[redirect.key] as string),
