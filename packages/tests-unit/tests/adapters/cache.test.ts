@@ -181,32 +181,46 @@ describe("CacheHandler", () => {
           globalThis.nextVersion = "16.0.0";
         });
 
-        it("Should return lastModified as 1 when tag is stale", async () => {
-          tagCache.mode = "nextMode";
-          tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
-          tagCache.isStale.mockResolvedValueOnce(true);
-          const cachedLastModified = Date.now();
-          incrementalCache.get.mockResolvedValueOnce({
-            value: {
-              kind: "FETCH",
-              data: {
-                headers: {},
-                body: "{}",
-                url: "https://example.com",
-                status: 200,
+        // Next computes the staleness of a fetch cache entry as `age > revalidate` (in seconds)
+        const isStaleForNext = (lastModified: number, revalidate: number) =>
+          (Date.now() - lastModified) / 1000 > revalidate;
+
+        it.each([
+          { name: "a revalidate value", revalidate: 60 },
+          // `INFINITE_CACHE`, i.e. `fetch(url, { cache: "force-cache" })` without `next.revalidate`
+          { name: "no revalidation", revalidate: 0xfffffffe },
+        ])(
+          "Should return a stale lastModified when tag is stale ($name)",
+          async ({ revalidate }) => {
+            tagCache.mode = "nextMode";
+            tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+            tagCache.isStale.mockResolvedValueOnce(true);
+            const cachedLastModified = Date.now();
+            incrementalCache.get.mockResolvedValueOnce({
+              value: {
+                kind: "FETCH",
+                data: {
+                  headers: {},
+                  body: "{}",
+                  url: "https://example.com",
+                  status: 200,
+                },
+                revalidate,
               },
-            },
-            lastModified: cachedLastModified,
-          });
+              lastModified: cachedLastModified,
+            });
 
-          const result = await cache.get("key", {
-            kind: "FETCH",
-            tags: ["tag1"],
-          });
+            const result = await cache.get("key", {
+              kind: "FETCH",
+              tags: ["tag1"],
+            });
 
-          expect(result).not.toBeNull();
-          expect(result?.lastModified).toEqual(1);
-        });
+            expect(result).not.toBeNull();
+            expect(isStaleForNext(result!.lastModified!, revalidate)).toBe(
+              true,
+            );
+          },
+        );
 
         it("Should return original lastModified when tag is not stale", async () => {
           tagCache.mode = "nextMode";

@@ -65,6 +65,21 @@ export function getStaleLastModified(revalidate?: number | false): number {
   return Date.now() - revalidate * 1000 - 1;
 }
 
+// The `revalidate` (in seconds) that Next.js uses for a `fetch` without `next.revalidate`
+const INFINITE_CACHE = 0xfffffffe;
+
+/**
+ * Same as {@link getStaleLastModified} for the fetch cache.
+ *
+ * A fetch entry is stale when its age exceeds `revalidate`, which can be `INFINITE_CACHE`
+ * (~136 years): a `lastModified` of `1` is not old enough.
+ *
+ * @returns The `lastModified` to report to Next.js for a stale fetch cache entry
+ */
+export function getStaleFetchLastModified(): number {
+  return Date.now() - INFINITE_CACHE * 1000 - 1;
+}
+
 /**
  * @param key The key for that specific cache entry
  * @param tags Array of tags associated with that cache entry
